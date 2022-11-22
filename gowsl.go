@@ -3,11 +3,14 @@ package gowsl
 import (
 	"context"
 	"os/exec"
+	"syscall"
+	"unsafe"
 )
 
 var (
 	binary    = "wsl"
 	available = false
+	dll, _    = syscall.LoadDLL(`Api-ms-win-wsl-api-l1-1-0.dll`)
 )
 
 func init() {
@@ -18,9 +21,22 @@ func init() {
 	}
 }
 
-// Available WSL是否可用
+// Available 检查WSL是否可用
 func Available() bool {
 	return available
+}
+
+// Registered 检查发行版是否注册
+func Registered(distribution string) bool {
+	if dll != nil {
+		proc, err := dll.FindProc("WslIsDistributionRegistered")
+		if err == nil {
+			ptr, _ := syscall.UTF16PtrFromString(distribution)
+			ret, _, _ := proc.Call(uintptr(unsafe.Pointer(ptr)))
+			return ret == 1
+		}
+	}
+	return false
 }
 
 // Command 返回*exec.Cmd以执行指定的程序
